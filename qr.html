@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QR Code Generator</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#7dd3fc;
+      --muted:#94a3b8;
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071024 0%, #0b1220 60%);color:#e6eef8}
+    .wrap{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+      gap:28px;
+    }
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:14px;
+      padding:22px;
+      width:100%;
+      max-width:900px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+      display:grid;
+      grid-template-columns: 1fr 340px;
+      gap:18px;
+      align-items:start;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .left{
+      padding:6px 8px;
+    }
+    h1{font-size:20px;margin:0 0 6px 0}
+    p.lead{margin:0 0 14px 0;color:var(--muted);font-size:13px}
+    label{display:block;font-size:13px;margin:8px 0 6px;color:var(--muted)}
+    input[type="text"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.04);
+      background:var(--glass);
+      color:inherit;
+      outline:none;
+      font-size:14px;
+    }
+    .controls{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    button{
+      cursor:pointer;
+      border:0;padding:10px 12px;border-radius:10px;font-weight:600;
+      background:linear-gradient(90deg,var(--accent),#60a5fa);
+      color:#022;
+      box-shadow:0 6px 18px rgba(45,212,255,0.08);
+    }
+    button.ghost{
+      background:transparent;color:var(--accent);border:1px solid rgba(125,211,252,0.14);
+      box-shadow:none;font-weight:600;
+    }
+    .small{padding:8px 10px;font-size:13px;border-radius:8px}
+    .right{
+      display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px;border-radius:10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0.008));
+      border:1px solid rgba(255,255,255,0.02);
+      min-height:260px;
+    }
+    .qr-wrap{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01));
+      border-radius:10px;
+      min-height:220px;
+    }
+    .hint{font-size:12px;color:var(--muted);text-align:center}
+    .options{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+    input[type="range"]{width:160px}
+    footer.note{grid-column:1/-1;margin-top:12px;color:var(--muted);font-size:12px;text-align:center}
+    @media (max-width:880px){
+      .card{grid-template-columns:1fr;max-width:520px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" role="main">
+      <div class="left">
+        <h1>QR Code Generator</h1>
+        <p class="lead">Paste any URL (or text). The QR is generated instantly — adjust size or download as PNG.</p>
+
+        <label for="url">URL or text</label>
+        <input id="url" type="text" placeholder="https://example.com" value="https://example.com" autocomplete="off">
+
+        <div class="controls">
+          <button id="generate">Generate</button>
+          <button id="clear" class="ghost small">Clear</button>
+          <button id="copy" class="ghost small">Copy URL</button>
+        </div>
+
+        <label for="size">Size: <span id="sizeLabel">220</span> px</label>
+        <div class="options">
+          <input id="size" type="range" min="120" max="700" value="220">
+          <label style="font-size:12px;color:var(--muted);margin-left:6px">Error correction:</label>
+          <select id="level" style="padding:8px;border-radius:8px;background:transparent;color:inherit;border:1px solid rgba(255,255,255,0.03)">
+            <option value="L">L - Low (7%)</option>
+            <option value="M" selected>M - Medium (15%)</option>
+            <option value="Q">Q - Quartile (25%)</option>
+            <option value="H">H - High (30%)</option>
+          </select>
+        </div>
+
+        <div style="margin-top:14px;">
+          <label for="fg">Foreground color</label>
+          <input id="fg" type="color" value="#0b1220" style="width:56px;height:36px;padding:2px;border-radius:6px;border:none;background:#fff;">
+          <label for="bg" style="margin-left:12px">Background color</label>
+          <input id="bg" type="color" value="#ffffff" style="width:56px;height:36px;padding:2px;border-radius:6px;border:none;background:#fff;">
+        </div>
+
+      </div>
+
+      <div class="right">
+        <div class="qr-wrap" aria-live="polite">
+          <!-- canvas will be inserted here -->
+          <canvas id="qrCanvas" width="220" height="220" style="border-radius:8px;background:#fff"></canvas>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <a id="downloadBtn" class="small" download="qrcode.png" style="text-decoration:none;display:inline-block">
+            <button id="download" class="small">Download PNG</button>
+          </a>
+          <button id="resetColors" class="ghost small">Reset Colors</button>
+        </div>
+
+        <div class="hint">Tip: you can paste deep links, Wi-Fi configuration strings, vCards, or plain text.</div>
+      </div>
+
+      <footer class="note">Built with <strong>qrious</strong> — offline QR generation in the browser.</footer>
+    </div>
+  </div>
+
+  <!-- qrious library (generates QR into a canvas) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script>
+    // UI bindings
+    const input = document.getElementById('url');
+    const generateBtn = document.getElementById('generate');
+    const clearBtn = document.getElementById('clear');
+    const copyBtn = document.getElementById('copy');
+    const sizeRange = document.getElementById('size');
+    const sizeLabel = document.getElementById('sizeLabel');
+    const levelSelect = document.getElementById('level');
+    const qrCanvas = document.getElementById('qrCanvas');
+    const downloadAnchor = document.getElementById('downloadBtn');
+    const fgColor = document.getElementById('fg');
+    const bgColor = document.getElementById('bg');
+    const resetColorsBtn = document.getElementById('resetColors');
+
+    // Create QRious instance
+    const qr = new QRious({
+      element: qrCanvas,
+      value: input.value.trim() || 'https://example.com',
+      size: parseInt(sizeRange.value, 10),
+      level: levelSelect.value,
+      background: bgColor.value,
+      foreground: fgColor.value,
+    });
+
+    function updateDownloadLink() {
+      try {
+        const dataURL = qrCanvas.toDataURL('image/png');
+        downloadAnchor.href = dataURL;
+      } catch (e) {
+        // older browsers fallback - disable download
+        downloadAnchor.removeAttribute('href');
+      }
+    }
+
+    function generate() {
+      const val = input.value.trim();
+      if (!val) {
+        alert('Please enter a URL or some text to encode.');
+        input.focus();
+        return;
+      }
+      qr.value = val;
+      qr.size = parseInt(sizeRange.value, 10);
+      qr.level = levelSelect.value;
+      qr.background = bgColor.value;
+      qr.foreground = fgColor.value;
+      sizeLabel.textContent = sizeRange.value;
+      updateDownloadLink();
+    }
+
+    // Live preview as user types (but not too aggressive)
+    let typingTimer;
+    input.addEventListener('input', () => {
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(generate, 300);
+    });
+
+    generateBtn.addEventListener('click', generate);
+
+    sizeRange.addEventListener('input', () => {
+      sizeLabel.textContent = sizeRange.value;
+      qr.size = parseInt(sizeRange.value, 10);
+      updateDownloadLink();
+    });
+
+    levelSelect.addEventListener('change', () => {
+      qr.level = levelSelect.value;
+      updateDownloadLink();
+    });
+
+    fgColor.addEventListener('input', () => {
+      qr.foreground = fgColor.value;
+      updateDownloadLink();
+    });
+    bgColor.addEventListener('input', () => {
+      qr.background = bgColor.value;
+      updateDownloadLink();
+    });
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      generate();
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      const text = input.value.trim();
+      if (!text) { alert('Nothing to copy — enter a URL or text first.'); return; }
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.textContent = 'Copied ✓';
+        setTimeout(()=> copyBtn.textContent = 'Copy URL', 1400);
+      } catch (e) {
+        alert('Copy failed. You can manually select the input and copy.');
+      }
+    });
+
+    resetColorsBtn.addEventListener('click', () => {
+      fgColor.value = '#0b1220';
+      bgColor.value = '#ffffff';
+      qr.foreground = fgColor.value;
+      qr.background = bgColor.value;
+      updateDownloadLink();
+    });
+
+    // Initial link
+    updateDownloadLink();
+  </script>
+</body>
+</html>
